@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kitchen-postgres
+    environment:
+      POSTGRES_DB: kitchen
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kitchen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  restaurant-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.restaurant
+    environment:
+      APP_PORT: "8081"
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  kitchen-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_PORT: "8080"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/kitchen?sslmode=disable"
+      MIGRATIONS_DIR: "/app/migrations"
+      RESTAURANT_SERVICE_URL: "http://restaurant-service:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      restaurant-service:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

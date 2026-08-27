@@ -1,0 +1,19 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+LAYOUT_WITH_LEGEND()
+
+Person(customer, "Customer", "Searches for restaurants and orders food")
+Person(manager, "Restaurant manager", "Publishes menu and handles incoming orders")
+System_Boundary(avito, "Avito.Kitchen") {
+    System(web, "Web app", "Marketplace frontend for ordering")
+    System(api, "Kitchen API", "Marketplace backend for catalog and orders")
+    System(rs, "Restaurant service", "Sample integration service for restaurant operations")
+    SystemDb(db, "PostgreSQL", "Stores restaurants, menu items, customers, orders")
+}
+
+Rel(customer, web, "Browses menu and places orders")
+Rel(web, api, "Uses REST API")
+Rel(api, db, "Reads and writes order data")
+Rel(api, rs, "Pushes new order event")
+Rel(manager, rs, "Configures kitchen queue and accepts orders")
+@enduml

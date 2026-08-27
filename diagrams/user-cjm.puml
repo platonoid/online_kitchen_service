@@ -1,0 +1,20 @@
+@startuml
+left to right direction
+skinparam componentStyle rectangle
+actor "Customer" as User
+rectangle "Avito.Kitchen web" as Web
+rectangle "Marketplace API" as API
+rectangle "Restaurant service" as RS
+database "PostgreSQL" as DB
+
+User --> Web : 1. Search and filter restaurants
+Web --> API : GET /restaurants
+API --> DB : read active restaurants and menu
+Web --> User : 2. View menu and price
+User --> Web : 3. Add items to cart
+Web --> API : POST /orders
+API --> DB : save order and order items
+API --> RS : notify new order
+RS --> Web : 4. Accept pickup/delivery request
+Web --> User : 5. Track order status
+@enduml

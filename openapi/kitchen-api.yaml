@@ -1,0 +1,291 @@
+openapi: 3.0.3
+info:
+  title: Avito.Kitchen API
+  version: 1.0.0
+  description: MVP API for marketplace catalog, ordering, and restaurant integration.
+servers:
+  - url: http://localhost:8080/api/v1
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /restaurants:
+    get:
+      summary: List active restaurants
+      responses:
+        '200':
+          description: Active restaurant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Restaurant'
+  /restaurants/{restaurantId}:
+    get:
+      summary: Get restaurant details
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Restaurant metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+  /restaurants/{restaurantId}/menu:
+    get:
+      summary: Get restaurant menu
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Menu payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurant_id:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuItem'
+  /orders:
+    get:
+      summary: List orders with optional filters
+      parameters:
+        - in: query
+          name: customer_id
+          schema:
+            type: integer
+        - in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+    post:
+      summary: Create an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+  /orders/{orderId}:
+    get:
+      summary: Get order details
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Full order payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+components:
+  schemas:
+    Restaurant:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - city
+        - cuisine
+        - delivery_eta_min
+        - commission_rate
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 1
+        slug:
+          type: string
+          example: chai-corner
+        name:
+          type: string
+          example: Chai Corner
+        city:
+          type: string
+          example: Moscow
+        cuisine:
+          type: string
+          example: Indian
+        delivery_eta_min:
+          type: integer
+          example: 25
+        commission_rate:
+          type: number
+          format: float
+          example: 0.08
+        is_active:
+          type: boolean
+          example: true
+    MenuItem:
+      type: object
+      required:
+        - id
+        - restaurant_id
+        - name
+        - category
+        - price_cents
+        - is_available
+      properties:
+        id:
+          type: integer
+        restaurant_id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+        price_cents:
+          type: integer
+          example: 420
+        is_available:
+          type: boolean
+    CustomerInput:
+      type: object
+      required:
+        - display_name
+      properties:
+        external_id:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+    OrderItemInput:
+      type: object
+      required:
+        - item_id
+        - quantity
+      properties:
+        item_id:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer
+        - restaurant_id
+        - delivery_address
+        - items
+      properties:
+        customer:
+          $ref: '#/components/schemas/CustomerInput'
+        restaurant_id:
+          type: integer
+        delivery_address:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemInput'
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        item_id:
+          type: integer
+        name:
+          type: string
+        quantity:
+          type: integer
+        unit_price_cents:
+          type: integer
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer_id:
+          type: integer
+        restaurant_id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, confirmed, cooking, delivered, cancelled]
+        total_cents:
+          type: integer
+        delivery_address:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        customer:
+          $ref: '#/components/schemas/CustomerInput'
+        restaurant:
+          $ref: '#/components/schemas/Restaurant'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+    OrderResponse:
+      type: object
+      properties:
+        order:
+          $ref: '#/components/schemas/Order'
+        restaurant_service_status:
+          type: string
+          example: accepted

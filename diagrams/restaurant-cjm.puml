@@ -1,0 +1,19 @@
+@startuml
+left to right direction
+skinparam componentStyle rectangle
+actor "Restaurant manager" as RM
+rectangle "Restaurant sync service" as RS
+rectangle "Marketplace API" as API
+database "PostgreSQL" as DB
+rectangle "Kitchen queue" as KQ
+
+RM --> RS : 1. Configure menu and working hours
+RS --> API : sync menu / catalog update
+API --> DB : persist item catalog
+API --> RS : 2. New order event arrives
+RS --> KQ : enqueue kitchen task
+KQ --> RM : ready to prepare order
+RM --> RS : 3. Confirm cooking / dispatch
+RS --> API : update order status
+API --> DB : persist status transition
+@enduml
