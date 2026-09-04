@@ -2,6 +2,7 @@ FROM golang:1.24.4-alpine AS builder
 WORKDIR /src
 
 COPY go.mod ./
+COPY go.sum ./
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations

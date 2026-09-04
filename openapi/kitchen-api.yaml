@@ -1,291 +1,228 @@
 openapi: 3.0.3
 info:
   title: Avito.Kitchen API
-  version: 1.0.0
-  description: MVP API for marketplace catalog, ordering, and restaurant integration.
+  version: 2.0.0
+  description: In-memory MVP API for shops, dishes, and orders.
 servers:
   - url: http://localhost:8080/api/v1
 paths:
   /healthz:
     get:
-      summary: Health check
       responses:
-        '200':
-          description: Service is healthy
+        "200":
+          description: Healthy
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
-                    example: ok
-  /restaurants:
+                  status: {type: string}
+  /metrics:
     get:
-      summary: List active restaurants
+      summary: Prometheus metrics
       responses:
-        '200':
-          description: Active restaurant list
+        "200":
+          description: Prometheus exposition format
+  /shops:
+    get:
+      summary: List active shops
+      responses:
+        "200":
+          description: Shops
           content:
             application/json:
               schema:
                 type: array
-                items:
-                  $ref: '#/components/schemas/Restaurant'
-  /restaurants/{restaurantId}:
+                items: {$ref: "#/components/schemas/Shop"}
+  /shops/{shopId}:
     get:
-      summary: Get restaurant details
+      summary: Get a shop
       parameters:
-        - in: path
-          name: restaurantId
-          required: true
-          schema:
-            type: integer
+        - {$ref: "#/components/parameters/ShopId"}
       responses:
-        '200':
-          description: Restaurant metadata
+        "200": {description: Shop}
+        "404": {description: Not found}
+  /shops/{shopId}/dishes:
+    get:
+      summary: Filter, sort, and paginate dishes
+      parameters:
+        - {$ref: "#/components/parameters/ShopId"}
+        - {in: query, name: q, schema: {type: string}}
+        - {in: query, name: category, schema: {type: string}}
+        - {in: query, name: sort, schema: {type: string, enum: [price, price_desc, name, name_desc]}}
+        - {in: query, name: page, schema: {type: integer, minimum: 1, default: 1}}
+        - {in: query, name: page_size, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        "200":
+          description: Paginated dishes
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Restaurant'
-  /restaurants/{restaurantId}/menu:
+                $ref: "#/components/schemas/DishPage"
+  /dishes:
     get:
-      summary: Get restaurant menu
+      summary: List dishes across shops
       parameters:
-        - in: path
-          name: restaurantId
-          required: true
-          schema:
-            type: integer
+        - {in: query, name: type, schema: {type: string}}
+        - {in: query, name: shop_id, schema: {type: integer}}
+        - {in: query, name: sort, schema: {type: string, enum: [price_asc, price_desc]}}
+        - {in: query, name: page, schema: {type: integer, minimum: 1, default: 1}}
+        - {in: query, name: page_size, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
       responses:
-        '200':
-          description: Menu payload
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  restaurant_id:
-                    type: integer
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/MenuItem'
+        "200": {description: Paginated dishes}
+  /dishes/{dishId}:
+    get:
+      summary: Get a dish
+      parameters:
+        - {in: path, name: dishId, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: Dish}
   /orders:
-    get:
-      summary: List orders with optional filters
-      parameters:
-        - in: query
-          name: customer_id
-          schema:
-            type: integer
-        - in: query
-          name: status
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Orders
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Order'
     post:
-      summary: Create an order
+      summary: Create an empty order
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateOrderRequest'
+              type: object
+              required: [shop_id]
+              properties:
+                shop_id: {type: integer}
       responses:
-        '201':
-          description: Order accepted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrderResponse'
+        "201": {description: Empty order}
   /orders/{orderId}:
     get:
-      summary: Get order details
+      summary: Get an order
       parameters:
-        - in: path
-          name: orderId
-          required: true
-          schema:
-            type: integer
+        - {$ref: "#/components/parameters/OrderId"}
       responses:
-        '200':
-          description: Full order payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
+        "200": {description: Order}
+        "404": {description: Not found}
+  /orders/{orderId}/items:
+    post:
+      summary: Add a dish to an order
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AddItem"}
+      responses:
+        "201": {description: Updated order}
+  /orders/{orderId}/items/{itemId}:
+    patch:
+      summary: Update an order item
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+        - {$ref: "#/components/parameters/ItemId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UpdateItem"}
+      responses:
+        "200": {description: Updated order}
+    delete:
+      summary: Delete an order item
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+        - {$ref: "#/components/parameters/ItemId"}
+      responses:
+        "200": {description: Updated order}
+  /orders/{orderId}/estimate:
+    get:
+      summary: Estimate preparation and delivery time
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+      responses:
+        "200": {description: Estimate}
 components:
+  parameters:
+    ShopId: {in: path, name: shopId, required: true, schema: {type: integer}}
+    OrderId: {in: path, name: orderId, required: true, schema: {type: integer}}
+    ItemId: {in: path, name: itemId, required: true, schema: {type: integer}}
   schemas:
-    Restaurant:
+    Shop:
       type: object
-      required:
-        - id
-        - slug
-        - name
-        - city
-        - cuisine
-        - delivery_eta_min
-        - commission_rate
-        - is_active
+      required: [id, name, city, cuisine, delivery_time_min, is_active]
       properties:
-        id:
-          type: integer
-          example: 1
-        slug:
-          type: string
-          example: chai-corner
-        name:
-          type: string
-          example: Chai Corner
-        city:
-          type: string
-          example: Moscow
-        cuisine:
-          type: string
-          example: Indian
-        delivery_eta_min:
-          type: integer
-          example: 25
-        commission_rate:
-          type: number
-          format: float
-          example: 0.08
-        is_active:
-          type: boolean
-          example: true
-    MenuItem:
+        id: {type: integer}
+        name: {type: string}
+        city: {type: string}
+        cuisine: {type: string}
+        delivery_time_min: {type: integer}
+        is_active: {type: boolean}
+    Ingredient:
       type: object
-      required:
-        - id
-        - restaurant_id
-        - name
-        - category
-        - price_cents
-        - is_available
       properties:
-        id:
-          type: integer
-        restaurant_id:
-          type: integer
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        category:
-          type: string
-        price_cents:
-          type: integer
-          example: 420
-        is_available:
-          type: boolean
-    CustomerInput:
+        id: {type: integer}
+        dish_id: {type: integer}
+        name: {type: string}
+        removable: {type: boolean}
+    Dish:
       type: object
-      required:
-        - display_name
       properties:
-        external_id:
-          type: string
-          nullable: true
-        display_name:
-          type: string
-        phone:
-          type: string
-          nullable: true
-    OrderItemInput:
+        id: {type: integer}
+        shop_id: {type: integer}
+        name: {type: string}
+        description: {type: string}
+        category: {type: string}
+        price_cents: {type: integer}
+        preparation_time_min: {type: integer}
+        is_available: {type: boolean}
+        ingredients:
+          type: array
+          items: {$ref: "#/components/schemas/Ingredient"}
+    DishPage:
       type: object
-      required:
-        - item_id
-        - quantity
       properties:
-        item_id:
-          type: integer
-        quantity:
-          type: integer
-          minimum: 1
-    CreateOrderRequest:
-      type: object
-      required:
-        - customer
-        - restaurant_id
-        - delivery_address
-        - items
-      properties:
-        customer:
-          $ref: '#/components/schemas/CustomerInput'
-        restaurant_id:
-          type: integer
-        delivery_address:
-          type: string
-        notes:
-          type: string
-          nullable: true
         items:
           type: array
-          items:
-            $ref: '#/components/schemas/OrderItemInput'
+          items: {$ref: "#/components/schemas/Dish"}
+        total: {type: integer}
+        page: {type: integer}
+        page_size: {type: integer}
+    AddItem:
+      type: object
+      required: [dish_id, quantity]
+      properties:
+        dish_id: {type: integer}
+        quantity: {type: integer, minimum: 1}
+        excluded_ingredient_ids:
+          type: array
+          items: {type: integer}
+    UpdateItem:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: {type: integer, minimum: 1}
+        excluded_ingredient_ids:
+          type: array
+          items: {type: integer}
     OrderItem:
       type: object
       properties:
-        id:
-          type: integer
-        order_id:
-          type: integer
-        item_id:
-          type: integer
-        name:
-          type: string
-        quantity:
-          type: integer
-        unit_price_cents:
-          type: integer
+        id: {type: integer}
+        order_id: {type: integer}
+        dish_id: {type: integer}
+        dish_name: {type: string}
+        quantity: {type: integer}
+        unit_price_cents: {type: integer}
+        excluded_ingredient_ids:
+          type: array
+          items: {type: integer}
     Order:
       type: object
       properties:
-        id:
-          type: integer
-        customer_id:
-          type: integer
-        restaurant_id:
-          type: integer
-        status:
-          type: string
-          enum: [pending, confirmed, cooking, delivered, cancelled]
-        total_cents:
-          type: integer
-        delivery_address:
-          type: string
-        notes:
-          type: string
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        customer:
-          $ref: '#/components/schemas/CustomerInput'
-        restaurant:
-          $ref: '#/components/schemas/Restaurant'
+        id: {type: integer}
+        shop_id: {type: integer}
+        status: {type: string}
         items:
           type: array
-          items:
-            $ref: '#/components/schemas/OrderItem'
-    OrderResponse:
-      type: object
-      properties:
-        order:
-          $ref: '#/components/schemas/Order'
-        restaurant_service_status:
-          type: string
-          example: accepted
+          items: {$ref: "#/components/schemas/OrderItem"}
+        total_cents: {type: integer}
+        estimated_time_min: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
