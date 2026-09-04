@@ -82,7 +82,7 @@ cmd/kitchen-api
 - `internal/repository` содержит интерфейс-порт, in-memory адаптер и PostgreSQL адаптер.
 - `internal/dto` содержит request/response-модели внешнего API и преобразования domain → response.
 - `internal/delivery/http` отвечает за маршрутизацию, валидацию HTTP-входа и формирование ответов.
-- `internal/kafka` содержит порт публикации событий и MVP-реализацию, которая пишет события в лог.
+- `internal/kafka` содержит Kafka producer и consumer для обмена событиями с заведениями.
 - `internal/metrics` содержит Prometheus middleware.
 
 ## Request/response модели и DTO
@@ -99,11 +99,28 @@ Repository работает только с domain-моделями. Это по
 
 Для HTTP-маршрутизации используется `github.com/go-chi/chi/v5`. Router собирается в `internal/delivery/http/handler.go`, подключает middleware метрик и разделяет health, metrics и API-маршруты. Chi выбран как небольшой идиоматичный router для стандартного `net/http`, без привязки application/service-слоёв к конкретному веб-фреймворку.
 
-## Kafka
+## Kafka и интеграция с заведением
 
-Use case зависит от интерфейса `EventPublisher`, а не от Kafka-клиента. При создании заказа публикуется `order.created`, при добавлении позиции — `order.item.added` с идентификаторами заказа, позиции, блюда и заведения.
+Use case зависит от интерфейса `EventPublisher`, а не от Kafka-клиента. Все события публикуются в topic `orders.events`:
 
-В MVP используется `LoggingPublisher`: он сериализует событие в JSON и пишет его в лог. Это сохраняет порт и позволяет заменить адаптер на настоящий Kafka producer без изменения сервисов. Отдельный consumer пока не нужен для клиентского сценария: принятие позиции заведением исключено из публичного MVP.
+- `order.created` — создан пустой заказ;
+- `order.item.added` — в заказ добавлена позиция;
+- `order.accepted` — заведение подтвердило заказ;
+- `order.rejected` — заведение не может выполнить заказ, поле `reason` содержит причину.
+
+При запуске через Docker Compose API публикует события в Kafka и одновременно читает ответы ресторана consumer-группой `kitchen-api`. Для подтверждения или отказа ресторан публикует в тот же topic JSON-событие с `type`, `order_id`, `shop_id` и, для отказа, `reason`:
+
+```json
+{
+  "type": "order.rejected",
+  "order_id": 1,
+  "shop_id": 1,
+  "reason": "Некоторые блюда закончились",
+  "created_at": "2026-09-04T09:00:00Z"
+}
+```
+
+После получения ответа статус заказа меняется на `accepted` или `rejected` и доступен через `GET /api/v1/orders/{orderId}`. Переменные `KAFKA_BROKERS` и `KAFKA_ORDERS_TOPIC` включают Kafka-адаптер. Если `KAFKA_BROKERS` не задан, локальный `go run` использует `LoggingPublisher` и пишет события в лог без внешних зависимостей.
 
 ## Repository и sqlc
 

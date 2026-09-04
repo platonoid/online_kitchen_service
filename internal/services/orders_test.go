@@ -58,3 +58,29 @@ func TestCatalogFilteringSortingAndPagination(t *testing.T) {
 		t.Fatalf("unexpected dishes: total=%d dishes=%+v", total, dishes)
 	}
 }
+
+func TestRestaurantCanAcceptOrRejectOrder(t *testing.T) {
+	repo := repository.NewInMemoryRepository()
+	service := NewOrderService(repo)
+	order, err := service.CreateOrder(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = service.HandleRestaurantEvent(context.Background(), domain.OrderEvent{
+		Type:    "order.rejected",
+		OrderID: order.ID,
+		ShopID:  order.ShopID,
+		Reason:  "dish unavailable",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	order, err = service.GetOrder(context.Background(), order.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if order.Status != domain.OrderStatusRejected {
+		t.Fatalf("expected rejected status, got %q", order.Status)
+	}
+}

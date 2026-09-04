@@ -33,7 +33,7 @@ func recalculateAll(order *domain.Order, repo repository.Repository) {
 
 func validStatus(status string) bool {
 	switch status {
-	case domain.OrderStatusPending, domain.OrderStatusAccepted, domain.OrderStatusCooking, domain.OrderStatusReady, domain.OrderStatusDelivered, domain.OrderStatusCancelled:
+	case domain.OrderStatusPending, domain.OrderStatusAccepted, domain.OrderStatusCooking, domain.OrderStatusReady, domain.OrderStatusDelivered, domain.OrderStatusCancelled, domain.OrderStatusRejected:
 		return true
 	default:
 		return false

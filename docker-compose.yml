@@ -39,9 +39,13 @@ services:
     environment:
       APP_PORT: "8080"
       REPOSITORY_DRIVER: "memory"
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_ORDERS_TOPIC: "orders.events"
     ports:
       - "8080:8080"
     restart: unless-stopped
+    depends_on:
+      - kafka
 
   prometheus:
     image: prom/prometheus:v3.5.0

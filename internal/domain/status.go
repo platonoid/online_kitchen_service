@@ -7,4 +7,5 @@ const (
 	OrderStatusReady     = "ready"
 	OrderStatusDelivered = "delivered"
 	OrderStatusCancelled = "cancelled"
+	OrderStatusRejected  = "rejected"
 )

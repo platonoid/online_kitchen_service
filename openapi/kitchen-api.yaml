@@ -16,7 +16,9 @@ paths:
               schema:
                 type: object
                 properties:
-                  status: {type: string}
+                  status:
+                    type: string
+                    enum: [pending, accepted, cooking, ready, delivered, cancelled, rejected]
   /metrics:
     get:
       summary: Prometheus metrics

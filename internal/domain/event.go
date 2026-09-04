@@ -9,5 +9,6 @@ type OrderEvent struct {
 	DishID    int       `json:"dish_id,omitempty"`
 	ShopID    int       `json:"shop_id"`
 	Order     Order     `json:"order"`
+	Reason    string    `json:"reason,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }

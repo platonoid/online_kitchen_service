@@ -19,6 +19,10 @@ type EventPublisher interface {
 	Publish(context.Context, domain.OrderEvent) error
 }
 
+type EventHandler interface {
+	Handle(context.Context, domain.OrderEvent) error
+}
+
 type AddItemInput struct {
 	DishID                int
 	Quantity              int
